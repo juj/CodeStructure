@@ -216,6 +216,18 @@ namespace DocGenerator
             return null;// children.First();
         }
 
+        public bool IsClassAbstract() // Returns true if class contains pure virtual functions.
+        {
+            foreach (Symbol s in children)
+                if (s.kind == "function" && s.virtualness == Virtualness.Pure)
+                {
+                    Console.WriteLine("Class " + name + " is abstract because of " + s.name);
+                    return true;
+                }
+
+            return false;
+        }
+
         public Symbol ClassCopyCtor()
         {
             if (this.kind != "class" && this.kind != "struct")
@@ -772,7 +784,7 @@ namespace DocGenerator
                 return Virtualness.None;
             if (s == "virtual")
                 return Virtualness.Virtual;
-            if (s == "pure")
+            if (s == "pure" || s == "pure-virtual")
                 return Virtualness.Pure;
             return Virtualness.None;
         }
