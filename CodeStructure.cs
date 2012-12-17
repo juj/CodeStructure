@@ -203,14 +203,79 @@ namespace DocGenerator
         /// <returns></returns>
         public Symbol ClassCtor()
         {
+            if (this.kind != "class" && this.kind != "struct")
+                return null;
+
             foreach (Symbol s in children)
-                if (s.NameWithoutNamespace() == this.name)
+                if (s.NameWithoutNamespace() == this.name && s.kind == "function")
                     if (s.similarOverload != null)
                         return s.similarOverload;
                     else
                         return s;
 
-            return children.First();
+            return null;// children.First();
+        }
+
+        public Symbol ClassCopyCtor()
+        {
+            if (this.kind != "class" && this.kind != "struct")
+                return null;
+
+            foreach (Symbol s in children)
+                if (s.NameWithoutNamespace() == this.name && s.kind == "function")
+                {
+                    if (s.parameters.Count == 1 && s.parameters[0].BasicType() == "const " + NameWithoutNamespace() + "&")
+                        return s;
+                }
+
+            return null;// children.First();
+        }
+
+        public Symbol ClassAssignmentOperator()
+        {
+            if (this.kind != "class" && this.kind != "struct")
+                return null;
+
+            foreach (Symbol s in children)
+                if (s.NameWithoutNamespace() == "operator=")
+                    return s;
+
+            return null;// children.First();
+        }
+
+        public Symbol ClassDtor()
+        {
+            if (this.kind != "class" && this.kind != "struct")
+                return null;
+
+            foreach (Symbol s in children)
+                if (s.NameWithoutNamespace() == "~" + this.name && s.kind == "function")
+                    if (s.similarOverload != null)
+                        return s.similarOverload;
+                    else
+                        return s;
+
+            return null;// children.First();
+        }
+
+        /// <summary>
+        /// If this symbol is a function, returns the parameter list without identifier names. E.g. int foo(int a, int b, float *c) returns "int, int, float *"
+        /// </summary>
+        /// <returns></returns>
+        public string FunctionParameterListWithoutNames()
+        {
+            bool first = true;
+            string paramList = "";
+            foreach (Parameter p in parameters)
+            {
+                if (!first)
+                {
+                    paramList += ",";
+                }
+                paramList += p.type;
+                first = false;
+            }
+            return paramList;
         }
 
         public string BriefComment()
@@ -618,6 +683,19 @@ namespace DocGenerator
             }
         }
 
+        /// <summary>
+        /// Compiled regular expression for performance.
+        /// </summary>
+        static Regex _htmlRegex = new Regex("<.*?>", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Remove HTML from string with compiled Regex.
+        /// </summary>
+        public static string StripTagsRegexCompiled(string source)
+        {
+            return _htmlRegex.Replace(source, " ");
+        }
+
         static private string GetXmlElementChildNodeValue(XmlElement element, string childNode, bool asText = false)
         {
             foreach (XmlElement e in element.ChildNodes)
@@ -625,9 +703,24 @@ namespace DocGenerator
                 if (e.Name == childNode)
                 {
                     ProcessNodes(e);
-                    string xml;
+                    string xml = "";
                     if (asText)
-                        xml = e.InnerText;
+                    {
+                        xml = StripTagsRegexCompiled(e.InnerXml).StripHtmlCharacters().Replace("  ", " ");
+                        /*
+                     //   xml = e.InnerText;
+                        foreach (XmlNode n in e.ChildNodes)
+                        {
+                            XmlElement elem = n as XmlElement;
+                            if (elem != null)
+                            {
+                                xml += elem.InnerText;
+                                xml += " ";
+                            }
+                        }
+                        xml += e;
+                         */
+                    }
                     else
                         xml = e.InnerXml;
                     xml = xml.Trim();
@@ -1310,7 +1403,7 @@ namespace DocGenerator
                     member.fullDefinition = GetXmlElementChildNodeValue(child, "definition");
                     member.argList = GetXmlElementChildNodeValue(child, "argsstring");
 
-                    member.classMemberIndexTitle = member.name = GetXmlElementChildNodeValue(child, "name");
+                    member.classMemberIndexTitle = member.name = GetXmlElementChildNodeValue(child, "name", true);
                     if (member.name.StartsWith("@"))
                         continue; // Doxygen creates items with names starting with '@' at least for unnamed unions, ignore those altogether.
                     symbols[member.id] = member;
@@ -1330,6 +1423,8 @@ namespace DocGenerator
                             else // This is a real function
                             {
                                 p.type = GetXmlElementChildNodeValue(param, "type", true);
+                                if (p.type.StartsWith("constScene"))
+                                    Console.WriteLine(p.type);
                                 p.name = GetXmlElementChildNodeValue(param, "declname");
                             }
                             member.parameters.Add(p);
@@ -1653,8 +1748,8 @@ namespace DocGenerator
     static public class StringExtensions
     {
         public static string StripHtmlCharacters(this string str)
-        {            
-            return System.Net.WebUtility.HtmlDecode(str.Replace("&nbsp;", " ").Replace("&#160;", " ").Replace("&amp;", "&")).Trim();
+        {
+            return System.Net.WebUtility.HtmlDecode(str.Replace("&nbsp;", " ").Replace("&#160;", " ").Replace("&amp;", "&")).Replace("&lt;", "<").Replace("&gt;", ">").Trim();
         }
         public static string StripHtmlLinks(this string str)
         {
