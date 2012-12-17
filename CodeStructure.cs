@@ -37,7 +37,7 @@ namespace DocGenerator
         /// The default value for this parameter in the function call.
         public string defaultValue;
         /// The @param documentation associated with this parameter.
-        public string comment;
+        public string comment = "";
 
         public bool IsAPointer()
         {
@@ -164,6 +164,15 @@ namespace DocGenerator
         /// This list specifies which other symbols use this symbol as the master doc page.
         /// </summary>
         public List<Symbol> otherOverloads = new List<Symbol>();
+
+        public bool HasOverloadsWithSameFunctionName()
+        {
+            foreach (Symbol s in parent.children)
+                if (s != this && s.name == this.name)
+                    return true;
+            return false;
+        }
+
         // If kind == "file", this specifies all files this file includes.
         public List<string> includes = new List<string>();
 //        public List<string> comments = new List<string>();
@@ -239,6 +248,19 @@ namespace DocGenerator
                 if (i > 0)
                     s += ",";
                 s += parameters[i].name;
+            }
+            s += ")";
+            return s;
+        }
+
+        public string ArgStringWithTypes()
+        {
+            string s = "(";
+            for (int i = 0; i < parameters.Count; ++i)
+            {
+                if (i > 0)
+                    s += ",";
+                s += parameters[i].type + " " + parameters[i].name;
             }
             s += ")";
             return s;
@@ -426,6 +448,26 @@ namespace DocGenerator
             return type == "bool" || type == "int" || type == "float"; ///\todo Add more basic types here.
         }
 
+        public List<Symbol> FetchFunctionOverloads(List<string> knownSymbolNames)
+        {
+            List<Symbol> functionOverloads = new List<Symbol>();
+            foreach (Symbol s in parent.children)
+                if (s.name == name)// && IsGoodSymbol(s, knownSymbolNames))
+                    functionOverloads.Add(s);
+            functionOverloads.Sort(delegate(Symbol left, Symbol right)
+            {
+                return right.parameters.Count - left.parameters.Count;
+                /*
+                if (left.parameters.Count > right.parameters.Count)
+                    return true;
+                else if (left.parameters.Count < right.parameters.Count)
+                    return false;
+                return left.parameters.cou
+                 */
+            });
+
+            return functionOverloads;
+        }
     };
 
     public class VariableListEntry
