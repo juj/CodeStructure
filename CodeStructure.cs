@@ -216,6 +216,20 @@ namespace DocGenerator
             return null;// children.First();
         }
 
+        public List<Symbol> AllClassCtors()
+        {
+            if (this.kind != "class" && this.kind != "struct")
+                return new List<Symbol>();
+
+            List<Symbol> ctors = new List<Symbol>();
+
+            foreach (Symbol s in children)
+                if (s.NameWithoutNamespace() == this.name && s.kind == "function")
+                    ctors.Add(s);
+
+            return ctors;
+        }
+
         public bool IsClassAbstract() // Returns true if class contains pure virtual functions.
         {
             foreach (Symbol s in children)
@@ -236,7 +250,7 @@ namespace DocGenerator
             foreach (Symbol s in children)
                 if (s.NameWithoutNamespace() == this.name && s.kind == "function")
                 {
-                    if (s.parameters.Count == 1 && s.parameters[0].BasicType() == "const " + NameWithoutNamespace() + "&")
+                    if (s.parameters.Count == 1 && s.parameters[0].type == ("const " + NameWithoutNamespace() + " &"))
                         return s;
                 }
 
