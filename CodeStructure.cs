@@ -165,6 +165,16 @@ namespace DocGenerator
         /// </summary>
         public List<Symbol> otherOverloads = new List<Symbol>();
 
+        // For 'typedef boost::uint8_t u8' returns 'boost::uint8_t'
+        public string TypedefRealType()
+        {
+            Match m = Regex.Match(fullDefinition, "typedef\\s+(.+)\\s+\\S+");
+            if (m.Success)
+                return m.Groups[1].Value;
+            else
+                return "";
+        }
+
         public bool HasOverloadsWithSameFunctionName()
         {
             foreach (Symbol s in parent.children)
@@ -1433,7 +1443,8 @@ namespace DocGenerator
                     if (member.name.StartsWith("@"))
                         continue; // Doxygen creates items with names starting with '@' at least for unnamed unions, ignore those altogether.
                     symbols[member.id] = member;
-//                    symbolsByName[member.name] = member;
+                    if (member.kind == "typedef")
+                        symbolsByName[member.name] = member;
                     parent.children.Add(member);
                     
                     // Function parameters.
