@@ -1436,7 +1436,7 @@ namespace DocGenerator
                     member.isExplicit = (child.GetAttribute("explicit") == "yes");
                     member.virtualness = ParseVirtualness(child.GetAttribute("virt"));
                     member.type = GetXmlElementChildNodeValue(child, "type", true);
-                    member.fullDefinition = GetXmlElementChildNodeValue(child, "definition");
+                    member.fullDefinition = GetXmlElementChildNodeValue(child, "definition", true);
                     member.argList = GetXmlElementChildNodeValue(child, "argsstring");
 
                     member.classMemberIndexTitle = member.name = GetXmlElementChildNodeValue(child, "name", true);
