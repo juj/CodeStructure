@@ -25,6 +25,33 @@ namespace DocGenerator
         Pure
     };
 
+    public class EnumValue
+    {
+        public EnumValue previousEnum;
+
+        public string name;
+        public string initializer = "";
+        public string briefDescription;
+        public string detailedDescription;
+
+        public int Value()
+        {
+            if (initializer.Length > 0)
+            {
+                Match m = Regex.Match(initializer, "\\s*=\\s*(.+)");
+                if (m.Success)
+                {
+                    string val = m.Groups[1].Value;
+                    return int.Parse(val.Trim());
+                }
+            }
+            if (previousEnum != null)
+                return previousEnum.Value() + 1;
+            else
+                return 0;
+        }
+    }
+
     /// <summary>
     /// "int foo" or "const char *str"
     /// </summary>
@@ -97,7 +124,7 @@ namespace DocGenerator
 
     public class Symbol
     {
-        public string kind; // "file", "function", "class", "variable", "struct", "enumvalue", "typedef"
+        public string kind; // "file", "function", "class", "variable", "struct", "enum", "enumvalue", "typedef"
         /// <summary>
         /// If this is a function, specifies the return value.
         /// If this is a member variable, specifies the variable type.
@@ -136,6 +163,11 @@ namespace DocGenerator
         public string sourceFilename;
         public int sourceFileStartLine;
         public int sourceFileEndLine;
+
+        /// <summary>
+        /// If this Symbol is "enum", this contains a list of all the different values this enum can take.
+        /// </summary>
+        public List<EnumValue> enumValues = new List<EnumValue>();
         /// <summary>
         /// If this Symbol is "function", this contains a list of all the parameters to the function.
         /// </summary>
@@ -476,11 +508,13 @@ namespace DocGenerator
 
         public string FullQualifiedSymbolName()
         {
+            if (kind == "typedef")
+                return name; ///\todo!
             string s = type + " ";
             s += ScopeName();
             s += name;
             s += argList;
-            return s;
+            return s.Trim();
         }
 
         public string FullQualifiedSymbolNameWithoutNamespace()
@@ -1443,10 +1477,14 @@ namespace DocGenerator
                     if (member.name.StartsWith("@"))
                         continue; // Doxygen creates items with names starting with '@' at least for unnamed unions, ignore those altogether.
                     symbols[member.id] = member;
-                    if (member.kind == "typedef")
-                        symbolsByName[member.name] = member;
+                    if (member.kind == "typedef" || member.kind == "enum")
+                    {
+                        symbolsByName[member.FullQualifiedSymbolName()] = member;
+                    }
+                    if (member.name == "EntityPtr")
+                        Console.WriteLine(member.name + " == " + member.FullQualifiedSymbolName() + ", parent: " + parent.name);
                     parent.children.Add(member);
-                    
+
                     // Function parameters.
                     foreach(XmlElement param in child.ChildNodes.OfType<XmlElement>())
                         if (param.Name == "param")
@@ -1465,6 +1503,17 @@ namespace DocGenerator
                                 p.name = GetXmlElementChildNodeValue(param, "declname");
                             }
                             member.parameters.Add(p);
+                        }
+                        else if (param.Name == "enumvalue")
+                        {
+                            EnumValue ev = new EnumValue();
+                            ev.name = GetXmlElementChildNodeValue(param, "name", true);
+                            ev.initializer = GetXmlElementChildNodeValue(param, "initializer", true);
+                            ev.briefDescription = GetXmlElementChildNodeValue(param, "briefdescription", true);
+                            ev.detailedDescription = GetXmlElementChildNodeValue(param, "detaileddescription", true);
+                            if (member.enumValues.Count > 0)
+                                ev.previousEnum = member.enumValues.Last();
+                            member.enumValues.Add(ev);
                         }
 
                     // If this is a #define macro, get the macro body code.
