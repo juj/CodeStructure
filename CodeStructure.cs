@@ -1470,6 +1470,11 @@ namespace DocGenerator
                     member.isExplicit = (child.GetAttribute("explicit") == "yes");
                     member.virtualness = ParseVirtualness(child.GetAttribute("virt"));
                     member.type = GetXmlElementChildNodeValue(child, "type", true);
+                    if (member.kind == "variable" && member.type.StartsWith("const ") && !(member.type.EndsWith("*") || member.type.EndsWith("&")))
+                    {
+                        member.type = member.type.Substring(6).Trim();
+                        member.isConst = true;
+                    }
                     member.fullDefinition = GetXmlElementChildNodeValue(child, "definition", true);
                     member.argList = GetXmlElementChildNodeValue(child, "argsstring");
 
